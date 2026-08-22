@@ -525,6 +525,31 @@ jobs:
             echo "⚡ 已启用强制运行模式（跳过交易日检查）"
           fi
 
+          # ========== 🔍 调试：检查飞书配置 ==========
+          echo "🔍 检查 FEISHU_WEBHOOK_URL 是否注入："
+          if [ -n "$FEISHU_WEBHOOK_URL" ]; then
+            echo "✅ FEISHU_WEBHOOK_URL 已设置，长度: ${#FEISHU_WEBHOOK_URL}"
+            echo "  前缀: ${FEISHU_WEBHOOK_URL:0:40}..."
+            echo "📡 测试飞书 Webhook 连通性..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$FEISHU_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d '{"msg_type":"text","content":{"text":"🧪 GitHub Actions 测试消息"}}')
+            echo "HTTP 状态码: $RESPONSE"
+            if [ "$RESPONSE" -eq 200 ]; then
+              echo "✅ Webhook 测试成功！请检查飞书群是否收到测试消息"
+            else
+              echo "❌ Webhook 测试失败，状态码: $RESPONSE"
+            fi
+          else
+            echo "❌ FEISHU_WEBHOOK_URL 为空，Secret 未注入！"
+            echo "请检查："
+            echo "  1. Secret 名称是否为 FEISHU_WEBHOOK_URL（注意拼写）"
+            echo "  2. Secret 是否配置在 Repository secrets 中（不是 Environments）"
+            echo "  3. workflow 中是否用 \${{ secrets.FEISHU_WEBHOOK_URL }} 正确引用"
+          fi
+          echo "=========================================="
+          echo ""
+
           # 执行分析
           if [ "$MODE" = "market-only" ]; then
             python main.py --market-review $FORCE_RUN_ARG --notify
